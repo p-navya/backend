@@ -136,7 +136,8 @@ export const login = async (req, res, next) => {
       message: 'Login successful',
       data: {
         token,
-        user: userWithoutPassword
+        user: userWithoutPassword,
+        firstLogin: user.first_login || false
       }
     });
   } catch (error) {
@@ -154,7 +155,7 @@ export const getMe = async (req, res, next) => {
   try {
     const { data: user, error } = await supabase
       .from('users')
-      .select('id, name, email, role, avatar, created_at')
+      .select('id, name, email, role, avatar, first_login, created_at')
       .eq('id', req.user.id)
       .single();
 
@@ -167,7 +168,10 @@ export const getMe = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      data: { user }
+      data: { 
+        user,
+        firstLogin: user.first_login || false
+      }
     });
   } catch (error) {
     res.status(500).json({
