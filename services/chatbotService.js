@@ -73,7 +73,7 @@ export const getChatbotResponse = async (message, conversationHistory = [], mode
  * Get response from Ollama
  */
 const getOllamaResponse = async (message, conversationHistory, mode, contextData) => {
-  const systemPrompt = getSystemPrompt(mode, contextData);
+  const systemPrompt = getSystemPrompt(mode, contextData, message);
 
   // Format messages for Ollama
   const messages = [
@@ -115,7 +115,7 @@ const getGroqResponse = async (message, conversationHistory, mode, contextData) 
   const apiKey = process.env.GROQ_API_KEY?.trim();
   if (!apiKey) throw new Error('GROQ_API_KEY is not set');
 
-  const systemPrompt = getSystemPrompt(mode, contextData);
+  const systemPrompt = getSystemPrompt(mode, contextData, message);
 
   const messages = [
     { role: 'system', content: systemPrompt },
@@ -154,7 +154,64 @@ const getGroqResponse = async (message, conversationHistory, mode, contextData) 
 /**
  * System Prompts based on Mode
  */
-const getSystemPrompt = (mode, contextData) => {
+
+/**
+ * Simple "Vector-less" Retrieval (Keyword Matching)
+ * Splits text into chunks and finds best matches for the query.
+ */
+const getRelevantContext = (fullText, query, maxChunks = 3, chunkSize = 800) => {
+  if (!fullText) return '';
+
+  // 1. Split into chunks (roughly by paragraphs or fixed size)
+  const paragraphs = fullText.split(/\n\s*\n/);
+  const chunks = [];
+  let currentChunk = '';
+
+  for (const p of paragraphs) {
+    if ((currentChunk + p).length > chunkSize) {
+      if (currentChunk) chunks.push(currentChunk);
+      currentChunk = p;
+    } else {
+      currentChunk += (currentChunk ? '\n' + p : p);
+    }
+  }
+  if (currentChunk) chunks.push(currentChunk);
+
+  // If text is short, just return it all
+  if (chunks.length <= maxChunks) return fullText;
+
+  // 2. Score chunks based on unique keyword overlap
+  const uniqueKeywords = [...new Set(query.toLowerCase().match(/\w{4,}/g) || [])];
+
+  const scoredChunks = chunks.map(chunk => {
+    const text = chunk.toLowerCase();
+    let score = 0;
+    uniqueKeywords.forEach(word => {
+      if (text.includes(word)) score++;
+    });
+    return { chunk, score };
+  });
+
+  // 3. Sort by score and pick top N
+  scoredChunks.sort((a, b) => b.score - a.score);
+  const topChunks = scoredChunks.slice(0, maxChunks).map(c => c.chunk);
+
+  console.log(`RAG: Retrieved ${topChunks.length} relevant chunks for query: "${query}"`);
+  return topChunks.join('\n\n[...]\n\n');
+};
+
+/**
+ * System Prompts based on Mode
+ */
+const getSystemPrompt = (mode, contextData, userMessage = '') => {
+  // For PDF-QA or Resume Review, specific optimization:
+  let processedContext = contextData;
+
+  // If Context is HUGE (>2000 chars) and we have a specific user query, try to shrink it
+  if ((mode === 'pdf-qa') && contextData.length > 2000 && userMessage) {
+    processedContext = getRelevantContext(contextData, userMessage);
+  }
+
   const basePrompts = {
     'mental-support': `You are StudyBuddy AI Mental Support Assistant.
       Role: Provide emotional support, stress management advice, and empathetic listening for students.
@@ -175,7 +232,7 @@ const getSystemPrompt = (mode, contextData) => {
       Role: Critique and improve an existing resume provided by the student.
       Context: The student has uploaded a resume with the following content:
       """
-      ${contextData}
+      ${processedContext}
       """
       Tone: Constructive, direct, professional.
       Key Actions:
@@ -186,14 +243,14 @@ const getSystemPrompt = (mode, contextData) => {
 
     'pdf-qa': `You are StudyBuddy AI Document Assistant.
       Role: Answer questions based strictly on the provided document content.
-      Context: The user has uploaded a document with the following content:
+      Context: The user has uploaded a document. Here are the most relevant excerpts based on your question:
       """
-      ${contextData}
+      ${processedContext}
       """
       Tone: Helpful, precise, clear.
       Key Actions:
-      - Answer the user's question using ONLY the provided context.
-      - If the answer is not in the document, state that clearly.
+      - Answer the user's question using ONLY the provided excerpts.
+      - If the answer is not in the text, state that clearly.
       - Summarize complex parts if asked.`,
 
     'student-helper': `You are StudyBuddy AI, an all-in-one academic assistant.
@@ -212,3 +269,4 @@ export const getAvailableModels = () => {
     { id: 'llama-3.1-70b-versatile', name: 'Llama 3.1 (Groq)', provider: 'Groq' }
   ];
 };
+
