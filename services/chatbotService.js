@@ -1,5 +1,7 @@
 import { Ollama } from 'ollama';
-import pdfParse from 'pdf-parse/lib/pdf-parse.js';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const pdfParse = require('pdf-parse');
 import fs from 'fs';
 
 /**
