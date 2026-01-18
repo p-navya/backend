@@ -159,8 +159,16 @@ const getGroqResponse = async (message, conversationHistory, mode, contextData) 
  * Simple "Vector-less" Retrieval (Keyword Matching)
  * Splits text into chunks and finds best matches for the query.
  */
-const getRelevantContext = (fullText, query, maxChunks = 3, chunkSize = 800) => {
+const getRelevantContext = (fullText, query, maxChunks = 3, chunkSize = 1500) => {
   if (!fullText) return '';
+
+  // STRATEGY: ChatGPT-like Context Window
+  // If the text is small enough (e.g. Resume, Article < 6000 chars),
+  // JUST SEND IT ALL. This provides the best reasoning capabilities.
+  if (fullText.length < 6000) {
+    console.log(`Context is small (${fullText.length} chars). Sending full text for maximum accuracy.`);
+    return fullText;
+  }
 
   // 1. Split into chunks (roughly by paragraphs or fixed size)
   const paragraphs = fullText.split(/\n\s*\n/);
