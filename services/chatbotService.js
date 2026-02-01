@@ -216,16 +216,19 @@ const getSystemPrompt = (mode, contextData, userMessage = '') => {
   let processedContext = contextData;
 
   // If Context is HUGE (>2000 chars) and we have a specific user query, try to shrink it
-  if ((mode === 'pdf-qa') && contextData.length > 2000 && userMessage) {
+  if ((mode === 'pdf-qa' || mode === 'resume-review' || mode === 'resume-builder') && contextData.length > 2000 && userMessage) {
     processedContext = getRelevantContext(contextData, userMessage);
   }
 
   const basePrompts = {
-    'mental-support': `You are StudyBuddy AI Mental Support Assistant.
-      Role: Provide emotional support, stress management advice, and empathetic listening for students.
-      Tone: Warm, non-judgmental, supportive, reassuring.
-      Key Actions: Listen actively, offer coping strategies, encourage self-care.
-      Safety: If the user mentions self-harm or severe crisis, gently urge them to seek professional help immediately.`,
+    'mental-support': `You are StudyBuddy AI, a friendly and empathetic conversational companion.
+      Role: Engage in a warm, casual, and supportive conversation with the student.
+      Tone: Friendly, casual, understanding, like a caring friend.
+      Key Actions:
+      - Chat about their day, feelings, or general topics.
+      - Offer simple words of encouragement if they are stressed.
+      - Keep the conversation flowing naturally.
+      - Do NOT act like a clinical therapist; just be a supportive friend.`,
 
     'resume-builder': `You are StudyBuddy AI Resume Architect.
       Role: Help students build professional, ATS-friendly resumes from scratch.
