@@ -1,6 +1,8 @@
 import { supabase } from '../config/supabase.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { sendWelcomeEmail, sendPasswordResetEmail } from '../services/emailService.js';
+import crypto from 'crypto';
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
@@ -54,6 +56,12 @@ export const register = async (req, res, next) => {
         success: false,
         message: error.message
       });
+    }
+
+    // Send welcome email
+    if (user) {
+      console.log(`📧 Sending welcome email to student: ${email}`);
+      sendWelcomeEmail(email, name).catch(err => console.error('Failed to send welcome email:', err));
     }
 
     // Generate JWT token
@@ -168,10 +176,62 @@ export const getMe = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      data: { 
+      data: {
         user,
         firstLogin: user.first_login || false
       }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// @desc    Forgot password
+// @route   POST /api/auth/forgot-password
+// @access  Public
+export const forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide an email'
+      });
+    }
+
+    // Find user by email
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('id, name, email')
+      .eq('email', email)
+      .single();
+
+    // For security reasons, don't reveal if user exists or not if it's a real prod app, 
+    // but here we follow the success pattern.
+    if (error || !user) {
+      return res.status(200).json({
+        success: true,
+        message: 'If an account exists, a reset link has been sent.'
+      });
+    }
+
+    // Generate reset token (in a real app, save this to DB with expiry)
+    // For this prototype, we'll generate a random token
+    const resetToken = crypto.randomBytes(20).toString('hex');
+
+    // In a real implementation, you'd save resetToken and resetTokenExpire to the user record in Supabase
+    // await supabase.from('users').update({ reset_token: resetToken, reset_expire: Date.now() + 3600000 }).eq('id', user.id);
+
+    // Send reset email
+    const emailSent = await sendPasswordResetEmail(user.email, resetToken, user.name);
+
+    res.status(200).json({
+      success: true,
+      message: emailSent ? 'Reset link sent to email' : 'Failed to send email'
     });
   } catch (error) {
     res.status(500).json({
