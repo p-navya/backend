@@ -43,11 +43,12 @@ jobs:
         run: docker pull navyadhriti/studybuddy-backend:latest
 
       - name: Deploy to Server
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          debug: true
           script: |
             sudo docker image prune -f
             sudo docker pull navyadhriti/studybuddy-backend:latest
