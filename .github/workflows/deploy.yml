@@ -50,13 +50,13 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           debug: true
           script: |
-            sudo docker image prune -f
-            sudo docker pull navyadhriti/studybuddy-backend:latest
-            sudo docker stop studybuddy-backend || true
-            sudo docker rm studybuddy-backend || true
-            sudo docker stop studybuddy-ai || true
-            sudo docker rm studybuddy-ai || true
-            sudo docker run -d --name studybuddy-backend --restart always -p 5000:5000 \
+            docker image prune -f
+            docker pull navyadhriti/studybuddy-backend:latest
+            docker stop studybuddy-backend || true
+            docker rm studybuddy-backend || true
+            docker stop studybuddy-ai || true
+            docker rm studybuddy-ai || true
+            docker run -d --name studybuddy-backend --restart always -p 5000:5000 \
               -e PORT=5000 \
               -e NODE_ENV=production \
               -e SUPABASE_PROJECT_ID="${{ secrets.SUPABASE_PROJECT_ID }}" \
