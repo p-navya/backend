@@ -66,7 +66,12 @@ export const register = async (req, res, next) => {
 
     // Generate JWT token
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
+      {
+        id: user.id,
+        email: user.email,
+        role: 'authenticated', // STANDARD SUPABASE ROLE
+        user_role: user.role   // APP-SPECIFIC ROLE
+      },
       process.env.JWT_SECRET || process.env.SUPABASE_JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRE || '7d' }
     );
@@ -131,7 +136,12 @@ export const login = async (req, res, next) => {
 
     // Generate JWT token
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
+      {
+        id: user.id,
+        email: user.email,
+        role: 'authenticated', // STANDARD SUPABASE ROLE
+        user_role: user.role   // APP-SPECIFIC ROLE
+      },
       process.env.JWT_SECRET || process.env.SUPABASE_JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRE || '7d' }
     );

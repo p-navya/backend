@@ -1,10 +1,16 @@
 import express from 'express';
+console.log('--- SERVER STARTING ---');
 import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import chatbotRoutes from './routes/chatbotRoutes.js';
+import resourceRoutes from './routes/resourceRoutes.js';
+import groupRoutes from './routes/groupRoutes.js';
+import activityRoutes from './routes/activityRoutes.js';
+import quizRoutes from './routes/quizRoutes.js';
+import taskRoutes from './routes/taskRoutes.js';
 import { supabase } from './config/supabase.js';
 
 // Load environment variables
@@ -17,22 +23,22 @@ app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    
+
     const allowedOrigins = [
       'http://localhost:5173',
       'https://studybuddy-project.vercel.app',
       process.env.FRONTEND_URL
     ].filter(Boolean);
-    
+
     // Normalize origin by removing trailing slash
     const normalizedOrigin = origin.replace(/\/$/, '');
-    
+
     // Check if origin is allowed (normalize allowed origins too)
     const isAllowed = allowedOrigins.some(allowed => {
       const normalizedAllowed = allowed.replace(/\/$/, '');
       return normalizedOrigin === normalizedAllowed;
     });
-    
+
     if (isAllowed) {
       // Return the normalized origin (without trailing slash) in the response
       callback(null, normalizedOrigin);
@@ -46,8 +52,8 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   exposedHeaders: ['Authorization']
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Test Supabase connection
 const testConnection = async () => {
@@ -70,11 +76,16 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/chatbot', chatbotRoutes);
+app.use('/api/resources', resourceRoutes);
+app.use('/api/groups', groupRoutes);
+app.use('/api/activity', activityRoutes);
+app.use('/api/quizzes', quizRoutes);
+app.use('/api/tasks', taskRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     message: 'StudyBuddy API is running',
     timestamp: new Date().toISOString()
   });

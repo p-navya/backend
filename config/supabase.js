@@ -1,19 +1,56 @@
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-dotenv.config();
+// Robustly load .env file from the backend root
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Assuming config/supabase.js is in Backend/config, so .env is in ../.env (Backend/.env)
+const envPath = path.resolve(__dirname, '../.env');
 
-const supabaseProjectId = process.env.SUPABASE_PROJECT_ID || 'xyliqfimopegckxayzgi';
-const supabaseUrl = `https://${supabaseProjectId}.supabase.co`;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5bGlxZmltb3BlZ2NreGF5emdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcwNjAyMzgsImV4cCI6MjA4MjYzNjIzOH0.nv664ZyW3LInBevNoiR6l6GeBD6cmM26D2BeReq-AjE';
+const result = dotenv.config({ path: envPath });
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
+if (result.error) {
+  console.error('Error loading .env file:', result.error);
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabaseProjectId = process.env.SUPABASE_PROJECT_ID;
+// Allow override URL if provided, otherwise construct from project ID
+export const supabaseUrl = process.env.SUPABASE_URL || (supabaseProjectId ? `https://${supabaseProjectId}.supabase.co` : undefined);
+export const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// Service role client for admin operations (use with caution)
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5bGlxZmltb3BlZ2NreGF5emdpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NzA2MDIzOCwiZXhwIjoyMDgyNjM2MjM4fQ.DaRMHM4yKjZUUjVyKoPd9unkQ5IyVc6HoDhLCK9C7AQ';
-export const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+if (!supabaseUrl || !supabaseAnonKey || !serviceRoleKey) {
+  console.error('CRITICAL ERROR: Missing Supabase environment variables in .env file');
+  console.log('Env Path:', envPath);
+  console.log('Project ID:', supabaseProjectId || 'MISSING');
+  console.log('URL:', supabaseUrl || 'MISSING');
+  console.log('Anon Key:', supabaseAnonKey ? 'PRESENT' : 'MISSING');
+  console.log('Service Key:', serviceRoleKey ? 'PRESENT' : 'MISSING');
+} else {
+  // Mask keys for logging
+  console.log('Supabase Config Loaded:', {
+    url: supabaseUrl,
+    anonKey: 'PRESENT',
+    serviceKey: 'PRESENT'
+  });
+}
 
+// Create clients with persistence options if needed (default is memory for node)
+// Create clients with persistence options if needed (default is memory for node)
+// If keys are missing, export a dummy object that logs errors when called (fail fast but don't crash import)
+export const supabase = (supabaseUrl && supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey, { auth: { persistSession: false } })
+  : { from: () => ({ select: () => ({ error: { message: 'Supabase not configured' } }) }) };
+
+// Admin client bypasses RLS
+export const supabaseAdmin = (supabaseUrl && serviceRoleKey)
+  ? createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } })
+  : {
+    from: () => ({
+      select: () => ({ error: { message: 'Supabase Admin not configured' } }),
+      insert: () => ({ select: () => ({ single: () => ({ error: { message: 'Supabase Admin not configured' } }) }) }),
+      update: () => ({ eq: () => ({ error: { message: 'Supabase Admin not configured' } }) }),
+      delete: () => ({ eq: () => ({ error: { message: 'Supabase Admin not configured' } }) })
+    })
+  };
