@@ -4,7 +4,7 @@ import { getStats, createMentor, getMentors } from '../controllers/adminControll
 
 const router = express.Router();
 
-// All routes require authentication and admin role
+// All routes require authentication and admin roles
 router.use(protect);
 router.use(authorize('admin'));
 
