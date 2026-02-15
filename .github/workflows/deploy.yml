@@ -42,8 +42,8 @@ jobs:
       - name: Verify Pushed Image
         run: docker pull navyadhriti/studybuddy-backend:latest
 
-      - name: Deploy to EC2
-        uses: appleboy/ssh-action@master
+      - name: Deploy to Server
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
@@ -51,7 +51,6 @@ jobs:
           script: |
             sudo docker image prune -f
             sudo docker pull navyadhriti/studybuddy-backend:latest
-            # Stop both old and new possible names to avoid conflicts
             sudo docker stop studybuddy-backend || true
             sudo docker rm studybuddy-backend || true
             sudo docker stop studybuddy-ai || true
